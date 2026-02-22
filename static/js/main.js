@@ -186,15 +186,20 @@ export const performRandomize = async (urls) => {
                 elements.resMeta.innerHTML = `<strong>${data.movie.year || ''}</strong> from ${data.list.title}`;
                 elements.resLink.href = data.movie.url;
                 
-                // Show stars if available
-                elements.resStars.textContent = data.movie.stars || '';
-                elements.resStars.classList.toggle('is-hidden', !data.movie.stars);
+                // Show stars/rating if available
+                if (data.movie.rating) {
+                    elements.resStars.innerHTML = `<span style="font-size: 14px; opacity: 0.7;">★</span> ${data.movie.rating} <small style="font-size: 10px; opacity: 0.4;">/ 5</small>`;
+                    elements.resStars.classList.remove('is-hidden');
+                } else {
+                    elements.resStars.classList.add('is-hidden');
+                }
 
                 // Show poster if available
                 if (data.movie.poster) {
                     elements.resPoster.src = data.movie.poster;
                     elements.resPoster.classList.remove('is-hidden');
                 } else {
+                    elements.resPoster.src = '';
                     elements.resPoster.classList.add('is-hidden');
                 }
                 

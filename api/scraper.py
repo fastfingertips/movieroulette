@@ -1,68 +1,46 @@
 import random, math
 from letterboxdpy.list import List as LBList
+from letterboxdpy.movie import Movie as LBMovie
 from letterboxdpy.core.scraper import parse_url
 from letterboxdpy.utils.utils_url import get_page_url
 from letterboxdpy.utils.movies_extractor import extract_movies_from_vertical_list
 
 def get_list_metadata(user, slug):
-    """Returns (lb_instance, title, count)"""
+    """Returns (lb_instance, title, count) using total library structure"""
     lb = LBList(user, slug)
     return lb, lb.title, lb.get_count()
 
-
-def custom_extract_movies(dom):
-    """
-    A more robust extractor that gets posters and ratings 
-    which the default letterboxdpy might miss.
-    """
-    items = dom.find_all("li", {"class": "posteritem"}) or dom.find_all("li", {"class": "griditem"})
-    movies = {}
-    
-    for item in items:
-        # Get the container with data attributes
-        container = item.find("div", {"class": "react-component"}) or item
-        if not container or 'data-film-id' not in container.attrs:
-            continue
-            
-        movie_id = container['data-film-id']
-        slug = container.get('data-item-slug') or container.get('data-film-slug')
-        name = container.get('data-item-name') or (container.img['alt'] if container.img else "Unknown")
-        
-        # Poster Image
-        img = container.find("img")
-        poster = img.get('src') if img else None
-        
-        # Rating (Stars) - usually in the anchor's title or data-original-title
-        link = container.find("a", {"class": "frame"})
-        rating_text = link.get('data-original-title', '') if link else ''
-        stars = ""
-        if "★" in rating_text or "½" in rating_text:
-            # Extract just the star part (e.g. "Title ★★★" -> "★★★")
-            parts = rating_text.split(" ")
-            stars = parts[-1] if parts else ""
-
-        movies[movie_id] = {
-            "slug": slug,
-            "name": name,
-            "poster": poster,
-            "stars": stars,
-            'url': f'https://letterboxd.com/film/{slug}/'
-        }
-    return movies
-
 def get_random_from_instance(lb, count):
-    """Picks a random movie from an existing LBList instance using paging logic"""
+    """
+    Picks a random movie from an existing LBList instance.
+    Uses library's Movie object for rich data.
+    """
     if not count:
         return None
             
+    # 1. Get random page content
     total_pages = math.ceil(count / 100)
     random_page = random.randint(1, total_pages)
-    
     page_dom = parse_url(get_page_url(lb.url, random_page))
     
-    # Use our custom extractor for more data (poster, stars)
-    movies = custom_extract_movies(page_dom)
+    # 2. Use library's built-in extractor to get the slugs
+    movies_meta = extract_movies_from_vertical_list(page_dom)
+    if not movies_meta:
+        return None
+            
+    # 3. Pick a random candidate from the page
+    candidate_id = random.choice(list(movies_meta.keys()))
+    candidate_meta = movies_meta[candidate_id] # Contains {slug, name, year, url}
     
-    return random.choice(list(movies.values())) if movies else None
-
-
+    # 4. Use library's Movie structure for full rich data (Poster, Rating, etc.)
+    # This ensures we get the "ready-made" object data as requested
+    movie = LBMovie(candidate_meta['slug'])
+    
+    return {
+        "name": movie.title,
+        "year": movie.year,
+        "slug": movie.slug,
+        "url": movie.url,
+        "poster": movie.poster,
+        "rating": movie.rating
+    }

@@ -158,8 +158,57 @@
         /* Result View */
         .result-view { text-align: center; animation: reveal 0.4s ease-out; transform: translateZ(0); }
         @keyframes reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .result-title { font-family: var(--font-serif); font-size: 32px; color: #fff; line-height: 1.2; margin-bottom: 6px; }
-        .result-meta { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 24px; }
+        
+        .result-hero {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            text-align: left;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+        }
+
+        .result-poster-container {
+            width: 100px;
+            height: 150px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .result-poster {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s;
+        }
+
+        .result-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .result-title { font-family: var(--font-serif); font-size: 26px; color: #fff; line-height: 1.2; margin-bottom: 6px; }
+        .result-meta { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 12px; }
+        
+        .result-stars {
+            color: #00e054;
+            letter-spacing: 0.1em;
+            font-size: 18px;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 480px) {
+            .result-hero { flex-direction: column; text-align: center; gap: 16px; }
+            .result-poster-container { width: 125px; height: 187px; }
+            .result-title { font-size: 22px; }
+        }
         
         .result-stats {
             display: inline-flex;

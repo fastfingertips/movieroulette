@@ -10,6 +10,8 @@ export const elements = {
     historyList: $('history-list'),
     resMovie: $('result-movie'),
     resMeta: $('result-meta'),
+    resStars: $('result-stars'),
+    resPoster: $('result-poster'),
     resLink: $('result-link'),
     statPool: $('stat-pool'),
     statProb: $('stat-prob'),

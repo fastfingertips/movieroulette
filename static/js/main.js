@@ -186,6 +186,18 @@ export const performRandomize = async (urls) => {
                 elements.resMeta.innerHTML = `<strong>${data.movie.year || ''}</strong> from ${data.list.title}`;
                 elements.resLink.href = data.movie.url;
                 
+                // Show stars if available
+                elements.resStars.textContent = data.movie.stars || '';
+                elements.resStars.classList.toggle('is-hidden', !data.movie.stars);
+
+                // Show poster if available
+                if (data.movie.poster) {
+                    elements.resPoster.src = data.movie.poster;
+                    elements.resPoster.classList.remove('is-hidden');
+                } else {
+                    elements.resPoster.classList.add('is-hidden');
+                }
+                
                 // Show statistics
                 elements.statPool.textContent = data.stats.total_pool.toLocaleString();
                 elements.statProb.textContent = data.stats.probability;

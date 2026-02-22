@@ -59,7 +59,7 @@ def randomize():
         probability = (1 / total_count) * 100
         
         return jsonify({
-            "movie": {k: movie.get(k) for k in ['name', 'url', 'year']},
+            "movie": {k: movie.get(k) for k in ['name', 'url', 'year', 'poster', 'stars']},
             "list": {"title": selected_list['title'], "url": selected_list['url']},
             "stats": {
                 "total_pool": total_count,

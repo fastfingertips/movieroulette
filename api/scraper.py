@@ -1,6 +1,6 @@
 import random, math
 from letterboxdpy.list import List as LBList
-from letterboxdpy.movie import Movie as LBMovie
+from letterboxdpy.pages.movie_profile import MovieProfile
 from letterboxdpy.core.scraper import parse_url
 from letterboxdpy.utils.utils_url import get_page_url
 from letterboxdpy.utils.movies_extractor import extract_movies_from_vertical_list
@@ -32,15 +32,16 @@ def get_random_from_instance(lb, count):
     candidate_id = random.choice(list(movies_meta.keys()))
     candidate_meta = movies_meta[candidate_id] # Contains {slug, name, year, url}
     
-    # 4. Use library's Movie structure for full rich data (Poster, Rating, etc.)
-    # This ensures we get the "ready-made" object data as requested
-    movie = LBMovie(candidate_meta['slug'])
+    # 4. Use library's MovieProfile for high-speed rich data
+    # This avoids fetching 5 extra pages (details, reviews, etc.)
+    profile = MovieProfile(candidate_meta['slug'])
     
     return {
-        "name": movie.title,
-        "year": movie.year,
-        "slug": movie.slug,
-        "url": movie.url,
-        "poster": movie.poster,
-        "rating": movie.rating
+        "name": profile.get_title(),
+        "year": profile.get_year(),
+        "slug": profile.slug,
+        "url": profile.url,
+        "poster": profile.get_poster(),
+        "rating": profile.get_rating()
     }
+

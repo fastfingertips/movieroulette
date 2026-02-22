@@ -1,9 +1,9 @@
 import { $, elements, setView, showError, hideError } from './modules/dom.js';
-import { renderHistory } from './modules/ui.js';
-import { saveHistory, saveRecentLists, clearHistory, clearRecentLists } from './modules/storage.js';
-import { createUrlField } from './components/UrlField.js';
+import { renderHistory, renderResult } from './modules/ui.js';
 
-let urlCount = 1;
+import { saveHistory, saveRecentLists, clearHistory, clearRecentLists } from './modules/storage.js';
+import { addField, renumberFields, getUrlCount, setUrlCount } from './modules/fields.js';
+import { checkUrlParams } from './modules/utils.js';
 
 // --- Loading Animation State ---
 const loadingMessages = [
@@ -14,66 +14,32 @@ const loadingMessages = [
     "FINALIZING CANDIDATE"
 ];
 let bgIntervals = { slot: null, prg: null };
+let currentUrlsForRetry = [];
 
-// --- Field Management ---
-export const renumberFields = () => {
-    const fields = $('url-fields').querySelectorAll('.field');
-    fields.forEach((field, i) => {
-        field.querySelector('.field__number').textContent = i + 1;
-        const input = field.querySelector('input');
-        if (i === 0) {
-            field.classList.remove('is-optional');
-            input.placeholder = "Paste your list URL here…";
-        } else {
-            field.classList.add('is-optional');
-            input.placeholder = "(Optional) Another list URL…";
-        }
-    });
-    $('add-url-btn').classList.toggle('is-hidden', urlCount >= 5);
+// --- Global UI Logic ---
+
+const updateUI = () => {
+    renderHistory(handleUseList);
 };
 
-export const addField = (value = '') => {
-    if (urlCount >= 5) return null;
-    const div = createUrlField(urlCount + 1, value);
-    $('url-fields').appendChild(div);
-    urlCount++;
-    renumberFields();
-    if (window.lucide) window.lucide.createIcons();
-    const input = div.querySelector('input');
-    input.addEventListener('input', () => updateUI());
-    div.querySelector('.field__remove').addEventListener('click', () => { 
-        if (urlCount > 1) {
-            div.remove(); 
-            urlCount--; 
-            renumberFields();
-        } else {
-            input.value = '';
-        }
-        updateUI();
-    });
-    return input;
-};
-
-// Use List action (called from UI item click)
 const handleUseList = (url) => {
     const inputs = Array.from($('randomize-form').querySelectorAll('input'));
     const existingInput = inputs.find(i => i.value.trim() === url);
 
     if (existingInput) {
-        // Toggle off if it exists
         if (inputs.length > 1) {
             existingInput.closest('.field').remove();
-            urlCount--;
+            setUrlCount(getUrlCount() - 1);
+            renumberFields();
         } else {
             existingInput.value = '';
         }
     } else {
-        // Find empty slot or add new
         const emptyInput = inputs.find(i => i.value === '');
         if (emptyInput) {
             emptyInput.value = url;
-        } else if (urlCount < 5) {
-            addField(url);
+        } else if (getUrlCount() < 5) {
+            addField(updateUI, url);
         } else {
             inputs[0].value = url;
         }
@@ -81,79 +47,13 @@ const handleUseList = (url) => {
     updateUI();
 };
 
-const updateUI = () => {
-    renderHistory(handleUseList);
-};
-
-// --- Initialization ---
-
-// Setup core listeners
-$('add-url-btn').addEventListener('click', () => addField());
-
-$('remove-url-1').addEventListener('click', () => {
-    if (urlCount > 1) {
-        $('remove-url-1').closest('.field').remove();
-        urlCount--;
-        renumberFields();
-    } else {
-        $('url-1').value = '';
-    }
-    updateUI();
-});
-
-$('url-1').addEventListener('input', () => updateUI());
-
-$('info-btn').addEventListener('click', () => elements.infoModal.classList.remove('is-hidden'));
-$('close-modal-btn').addEventListener('click', () => elements.infoModal.classList.add('is-hidden'));
-elements.infoModal.addEventListener('click', (e) => { 
-    if(e.target === elements.infoModal) elements.infoModal.classList.add('is-hidden'); 
-});
-
-$('clear-history').addEventListener('click', () => { clearHistory(); updateUI(); });
-$('clear-lists').addEventListener('click', () => { clearRecentLists(); updateUI(); });
-
-// Technical Stats Modal Listeners
-elements.statsBtn.addEventListener('click', () => {
-    if (window.lastResultData) {
-        elements.statsJson.textContent = JSON.stringify(window.lastResultData, null, 2);
-        setView('stats');
-    }
-});
-
-$('close-stats-btn').addEventListener('click', () => setView('result'));
-elements.statsModal.addEventListener('click', (e) => { 
-    if(e.target === elements.statsModal) setView('result'); 
-});
-
-elements.copyStatsBtn.addEventListener('click', () => {
-    const text = elements.statsJson.textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        const originalText = elements.copyStatsBtn.innerHTML;
-        elements.copyStatsBtn.innerHTML = '<i data-lucide="check"></i> Copied!';
-        if (window.lucide) window.lucide.createIcons();
-        setTimeout(() => {
-            elements.copyStatsBtn.innerHTML = originalText;
-            if (window.lucide) window.lucide.createIcons();
-        }, 2000);
-    });
-});
-
-// Reset state when typing
-$('randomize-form').addEventListener('input', () => {
-    updateUI();
-    hideError();
-});
-
-
-// --- The Core API Logic ---
-let currentUrlsForRetry = [];
+// --- API Execution ---
 
 export const performRandomize = async (urls) => {
     currentUrlsForRetry = urls;
     const submitBtn = elements.formArea.querySelector('button[type="submit"]');
     const resultBtns = elements.resultArea.querySelectorAll('.action-btn');
     
-    // UI Loading state
     submitBtn.disabled = true;
     submitBtn.textContent = 'Processing...';
     resultBtns.forEach(btn => { btn.style.pointerEvents = 'none'; btn.style.opacity = '0.5'; });
@@ -188,17 +88,11 @@ export const performRandomize = async (urls) => {
                 });
 
                 let data;
-                const contentType = res.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
+                if (res.headers.get("content-type")?.includes("application/json")) {
                     data = await res.json();
-                    if (!res.ok) {
-                        // 4xx = user error (no retry), 5xx = server/connection issue (retry)
-                        throw { userFacing: res.status < 500, message: data.error || 'Request failed' };
-                    }
+                    if (!res.ok) throw { userFacing: res.status < 500, message: data.error || 'Request failed' };
                 } else {
-                    // Connection/server errors (504, etc.) → retry
-                    const reason = res.status === 504 ? 'Gateway Timeout' : `HTTP ${res.status}`;
-                    throw { userFacing: false, message: `Server error: ${reason}` };
+                    throw { userFacing: false, message: `Server error: ${res.status === 504 ? 'Timeout' : res.status}` };
                 }
                 
                 clearInterval(bgIntervals.slot);
@@ -207,99 +101,89 @@ export const performRandomize = async (urls) => {
                 elements.bar.style.width = '100%';
                 await new Promise(r => setTimeout(r, 400));
 
-                // Show result
-                elements.resMovie.textContent = data.movie.name;
-                elements.resMeta.innerHTML = `<strong>${data.movie.year || ''}</strong> from ${data.list.title}`;
-                elements.resLink.href = data.movie.url;
-                
-                // Show stars/rating if available
-                if (data.movie.rating) {
-                    const rating = parseFloat(data.movie.rating);
-                    let starsHtml = '';
-                    for (let i = 1; i <= 5; i++) {
-                        if (rating >= i) {
-                            starsHtml += '<i data-lucide="star" class="star-full"></i>';
-                        } else if (rating >= i - 0.5) {
-                            starsHtml += '<i data-lucide="star-half" class="star-half"></i>';
-                        } else {
-                            starsHtml += '<i data-lucide="star" style="opacity: 0.2;"></i>';
-                        }
-                    }
-                    elements.resStars.innerHTML = `${starsHtml} <span class="result-rating-num">${rating.toFixed(2)}</span>`;
-                    if (window.lucide) window.lucide.createIcons();
-                    elements.resStars.classList.remove('is-hidden');
-                } else {
-                    elements.resStars.classList.add('is-hidden');
-                }
-
-                // Show poster if available
-                if (data.movie.poster) {
-                    elements.resPoster.src = data.movie.poster;
-                    elements.resPoster.classList.remove('is-hidden');
-                } else {
-                    elements.resPoster.src = '';
-                    elements.resPoster.classList.add('is-hidden');
-                }
-                
-                // Show statistics
-                elements.statPool.textContent = data.stats.total_pool.toLocaleString();
-                elements.statProb.textContent = data.stats.probability;
-
-                // Technical Logs Cache
-                window.lastResultData = {
-                    movie: data.movie.name,
-                    slug: data.movie.slug,
-                    rating: data.movie.rating,
-                    stats: data.stats
-                };
-
+                renderResult(data);
                 setView('result');
                 
-                // Save Context
                 saveHistory(data);
+
                 saveRecentLists(urls);
                 updateUI();
-                return; // Success!
+                return;
 
             } catch (err) {
-                // Only retry if it's a server/connection error and we have attempts left
                 if (err.userFacing || attempts >= maxRetries) {
                     clearInterval(bgIntervals.slot);
                     clearInterval(bgIntervals.prg);
                     setView('form');
-
-                    if (err.userFacing) {
-                        showError(err.message);
-                    } else {
-                        console.error('[MovieRoulette] Final attempt failed:', err.message || err);
-                        showError('Connection unstable. Please try once more in a few seconds.');
-                    }
+                    showError(err.message || 'Connection unstable');
                     break;
                 }
-
                 attempts++;
-                console.warn(`[MovieRoulette] Attempt ${attempts} failed. Retrying...`, err.message);
-                
-                // Visual feedback for retry
                 const originalText = elements.slot.textContent;
                 elements.slot.textContent = 'RETRYING...';
-                elements.slot.style.color = '#ff9500'; // Amber alert color
-                
+                elements.slot.style.color = '#ff9500';
                 await new Promise(r => setTimeout(r, 500));
-                
-                elements.slot.style.color = ''; // Reset color
+                elements.slot.style.color = '';
                 elements.slot.textContent = originalText;
             }
         }
     } finally {
-        // Reset buttons regardless of outcome
         submitBtn.disabled = false;
         submitBtn.textContent = 'Spin the wheel';
         resultBtns.forEach(btn => { btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; });
     }
 };
 
-// --- Form Submissions ---
+// --- Listeners & Boots ---
+
+$('add-url-btn').addEventListener('click', () => addField(updateUI));
+
+$('remove-url-1').addEventListener('click', () => {
+    if (getUrlCount() > 1) {
+        $('remove-url-1').closest('.field').remove();
+        setUrlCount(getUrlCount() - 1);
+        renumberFields();
+    } else {
+        $('url-1').value = '';
+    }
+    updateUI();
+});
+
+$('url-1').addEventListener('input', () => updateUI());
+
+$('info-btn').addEventListener('click', () => setView('info'));
+$('close-modal-btn').addEventListener('click', () => setView('form'));
+elements.infoModal.addEventListener('click', (e) => { 
+    if(e.target === elements.infoModal) setView('form'); 
+});
+
+$('clear-history').addEventListener('click', () => { clearHistory(); updateUI(); });
+$('clear-lists').addEventListener('click', () => { clearRecentLists(); updateUI(); });
+
+elements.statsBtn.addEventListener('click', () => {
+    if (window.lastResultData) {
+        elements.statsJson.textContent = JSON.stringify(window.lastResultData, null, 2);
+        setView('stats');
+    }
+});
+
+$('close-stats-btn').addEventListener('click', () => setView('result'));
+elements.statsModal.addEventListener('click', (e) => { 
+    if(e.target === elements.statsModal) setView('result'); 
+});
+
+elements.copyStatsBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(elements.statsJson.textContent).then(() => {
+        const originalText = elements.copyStatsBtn.innerHTML;
+        elements.copyStatsBtn.innerHTML = '<i data-lucide="check"></i> Copied!';
+        if (window.lucide) window.lucide.createIcons();
+        setTimeout(() => {
+            elements.copyStatsBtn.innerHTML = originalText;
+            if (window.lucide) window.lucide.createIcons();
+        }, 2000);
+    });
+});
+
 $('randomize-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     hideError();
@@ -317,47 +201,7 @@ $('randomize-form').addEventListener('submit', async (e) => {
 $('try-again-btn').addEventListener('click', () => performRandomize(currentUrlsForRetry));
 $('back-btn').addEventListener('click', () => setView('form'));
 
-// Boot
+// Init
 updateUI();
-
-// --- URL Parameter Initialization ---
-const checkUrlParams = () => {
-    const params = new URLSearchParams(window.location.search);
-    const providedUrls = new Set();
-    
-    ['url', 'urls', 'list', 'lists'].forEach(key => {
-        params.getAll(key).forEach(val => {
-            val.split(',').forEach(v => {
-                if (v.trim()) providedUrls.add(v.trim());
-            });
-        });
-    });
-
-    const urlsToRun = Array.from(providedUrls).slice(0, 5);
-    
-    if (urlsToRun.length > 0) {
-        const inputs = Array.from($('randomize-form').querySelectorAll('input'));
-        
-        urlsToRun.forEach((url, index) => {
-            if (index === 0) {
-                inputs[0].value = url;
-            } else {
-                addField(url);
-            }
-        });
-        
-        updateUI();
-        
-        // Clean up URL to prevent accidental re-runs on refresh
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // Auto trigger the wheel logic
-        performRandomize(urlsToRun);
-    }
-};
-
-checkUrlParams();
-
-// Initial icon render
+checkUrlParams((urls) => performRandomize(urls));
 if (window.lucide) window.lucide.createIcons();
-

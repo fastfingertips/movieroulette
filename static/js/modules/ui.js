@@ -43,3 +43,49 @@ export const renderHistory = (useListCallback) => {
 
     if (window.lucide) window.lucide.createIcons();
 };
+
+export const renderResult = (data) => {
+    // 1. Text & Links
+    elements.resMovie.textContent = data.movie.name;
+    elements.resMeta.innerHTML = `<strong>${data.movie.year || ''}</strong> from ${data.list.title}`;
+    elements.resLink.href = data.movie.url;
+    
+    // 2. Stars rendering
+    if (data.movie.rating) {
+        const rating = parseFloat(data.movie.rating);
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            if (rating >= i) starsHtml += '<i data-lucide="star" class="star-full"></i>';
+            else if (rating >= i - 0.5) starsHtml += '<i data-lucide="star-half" class="star-half"></i>';
+            else starsHtml += '<i data-lucide="star" style="opacity: 0.2;"></i>';
+        }
+        elements.resStars.innerHTML = `${starsHtml} <span class="result-rating-num">${rating.toFixed(2)}</span>`;
+        elements.resStars.classList.remove('is-hidden');
+    } else {
+        elements.resStars.classList.add('is-hidden');
+    }
+
+    // 3. Poster
+    if (data.movie.poster) {
+        elements.resPoster.src = data.movie.poster;
+        elements.resPoster.classList.remove('is-hidden');
+    } else {
+        elements.resPoster.src = '';
+        elements.resPoster.classList.add('is-hidden');
+    }
+    
+    // 4. Stats
+    elements.statPool.textContent = data.stats.total_pool.toLocaleString();
+    elements.statProb.textContent = data.stats.probability;
+
+    // 5. Tech Cache
+    window.lastResultData = {
+        movie: data.movie.name,
+        slug: data.movie.slug,
+        rating: data.movie.rating,
+        stats: data.stats
+    };
+
+    if (window.lucide) window.lucide.createIcons();
+};
+

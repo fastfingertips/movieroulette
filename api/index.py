@@ -1,22 +1,11 @@
-import sys, os
+import os, random
 from flask import Flask, request, jsonify
-import random
-
-# Add current directory to path for robust imports without __init__.py
-api_dir = os.path.dirname(os.path.abspath(__file__))
-if api_dir not in sys.path:
-    sys.path.append(api_dir)
 
 from utils import extract_info, get_error_msg
 from scraper import get_list_metadata, get_random_from_instance, get_random_movie_meta, get_movie_details
 from constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
 
-
-
-# Initialize Flask with the project root as the static folder
 app = Flask(__name__, static_folder=ROOT_DIR, static_url_path='')
-
-
 
 @app.route('/')
 def index():

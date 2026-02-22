@@ -1,4 +1,5 @@
 import random
+import traceback
 
 from flask import Flask, jsonify, request
 
@@ -9,6 +10,7 @@ from scraper import (
     get_random_movie_meta,
 )
 from utils import extract_info, get_error_msg
+
 
 
 app = Flask(__name__, static_folder=ROOT_DIR, static_url_path="")
@@ -25,6 +27,7 @@ def api_metadata():
 
     try:
         urls = [u.strip() for u in (request.json or {}).get("urls", []) if u.strip()]
+        print(f"DEBUG: [START] api_metadata with {len(urls)} urls")
         if not urls:
             return jsonify({"error": "No URLs"}), 400
 
@@ -33,25 +36,32 @@ def api_metadata():
             try:
                 user, slug = extract_info(url)
                 if user:
+                    print(f"DEBUG: [FETCH] Metadata for {user}/{slug}...")
                     # We only need the counts and names here
                     _, title, count = get_list_metadata(user, slug)
                     if count > 0:
                         list_data.append(
                             {"user": user, "slug": slug, "title": title, "count": count}
                         )
+                    print(f"DEBUG: [RESULT] Found {count} items in {title}")
             except Exception as e:
-                print(f"DEBUG: Skipping invalid list {url} - {e}")
+                print(f"DEBUG: [ERROR] Skipping {url} - {str(e)}")
                 continue
 
         if not list_data:
+            print("DEBUG: [FINISH] api_metadata -> No valid lists found")
             return jsonify({"error": "No valid movies found in provided lists"}), 404
 
+        print(f"DEBUG: [FINISH] api_metadata -> Success ({len(list_data)} lists)")
         return jsonify(
             {"lists": list_data, "total": sum(item["count"] for item in list_data)}
         )
 
     except Exception as e:
+        print("DEBUG: [CRITICAL] api_metadata crashed!")
+        traceback.print_exc()
         return jsonify({"error": get_error_msg(e)}), 500
+
 
 
 @app.route("/api/select", methods=["POST"])
@@ -61,6 +71,7 @@ def api_select():
     try:
         lists = request.json.get("lists", [])
         total = request.json.get("total", 0)
+        print(f"DEBUG: [START] api_select from {len(lists)} lists, total pool: {total}")
         if not lists:
             return jsonify({"error": "No lists"}), 400
 
@@ -74,13 +85,18 @@ def api_select():
                 selected = item
                 break
 
+        print(f"DEBUG: [ACTION] Selected list: {selected['user']}/{selected['slug']}")
         # Get random movie meta
         meta = get_random_movie_meta(
             selected["user"], selected["slug"], selected["count"]
         )
+        print(f"DEBUG: [FINISH] api_select -> Success ({meta['name']})")
         return jsonify({"meta": meta, "list": selected})
     except Exception as e:
+        print("DEBUG: [CRITICAL] api_select crashed!")
+        traceback.print_exc()
         return jsonify({"error": get_error_msg(e)}), 500
+
 
 
 @app.route("/api/details", methods=["POST"])

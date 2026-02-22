@@ -40,9 +40,20 @@ const handleUseList = (url) => {
     updateUI();
 };
 
+// --- Debug Logging ---
+const Log = {
+    info: (msg, data = '') => console.log(`%c[INFO] ${msg}`, 'color: #007aff; font-weight: bold;', data),
+    success: (msg, data = '') => console.log(`%c[OK] ${msg}`, 'color: #34c759; font-weight: bold;', data),
+    warn: (msg, data = '') => console.warn(`%c[WARN] ${msg}`, 'color: #ff9500; font-weight: bold;', data),
+    error: (msg, data = '') => console.error(`%c[FAIL] ${msg}`, 'color: #ff3b30; font-weight: bold;', data),
+    step: (name) => console.log(`%c>> ${name}`, 'background: #007aff; color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; font-weight: bold;')
+};
+
+
 // --- API Execution ---
 
 export const performRandomize = async (urls) => {
+    Log.info('Booting Randomizer...', { urls });
     currentUrlsForRetry = urls;
     const submitBtn = elements.formArea.querySelector('button[type="submit"]');
     const resultBtns = elements.resultArea.querySelectorAll('.action-btn');
@@ -64,15 +75,21 @@ export const performRandomize = async (urls) => {
         const startTime = Date.now();
 
         // 1. Fetch Metadata (Honest Progress)
+        Log.step('1. FETCH METADATA');
         elements.slot.textContent = CONFIG.LOADING_MESSAGES[1];
+        Log.info('Requesting metadata...', { urls });
+        
         const metaRes = await fetch('/api/metadata', { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
             body: JSON.stringify({ urls }) 
         });
         
+        Log.info(`Response Status: ${metaRes.status}`);
+        
         if (!metaRes.ok) {
             const text = await metaRes.text();
+            Log.error('Metadata request failed', { status: metaRes.status, response: text });
             let errorMessage = 'Metadata failed';
             try { 
                 const errData = JSON.parse(text); 
@@ -83,17 +100,24 @@ export const performRandomize = async (urls) => {
             throw { userFacing: true, message: errorMessage };
         }
         const metaData = await metaRes.json();
+        Log.success('Metadata received', metaData);
         
         // 2. Selection (Honest Progress)
+        Log.step('2. SELECT RANDOM MOVIE');
         elements.slot.textContent = CONFIG.LOADING_MESSAGES[2];
+        Log.info('Picking from pool...', { lists: metaData.lists, total: metaData.total });
+
         const selectRes = await fetch('/api/select', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ lists: metaData.lists, total: metaData.total })
         });
         
+        Log.info(`Response Status: ${selectRes.status}`);
+
         if (!selectRes.ok) {
             const text = await selectRes.text();
+            Log.error('Selection failed', { status: selectRes.status, response: text });
             let errorMessage = 'Selection failed';
             try { 
                 const errData = JSON.parse(text); 
@@ -104,17 +128,24 @@ export const performRandomize = async (urls) => {
             throw { userFacing: true, message: errorMessage };
         }
         const selectData = await selectRes.json();
+        Log.success('Selection complete', selectData);
         
         // 3. Details (Honest Progress)
+        Log.step('3. FETCH MOVIE DETAILS');
         elements.slot.textContent = CONFIG.LOADING_MESSAGES[3];
+        Log.info(`Requesting details for ${selectData.meta.slug}...`);
+
         const detailRes = await fetch('/api/details', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug: selectData.meta.slug })
         });
         
+        Log.info(`Response Status: ${detailRes.status}`);
+
         if (!detailRes.ok) {
             const text = await detailRes.text();
+            Log.error('Detail fetch failed', { status: detailRes.status, response: text });
             let errorMessage = 'Details failed';
             try { 
                 const errData = JSON.parse(text); 
@@ -125,9 +156,10 @@ export const performRandomize = async (urls) => {
             throw { userFacing: true, message: errorMessage };
         }
         const detailData = await detailRes.json();
-
+        Log.success('Details received', detailData);
 
         // 4. Finalizing
+        Log.step('4. FINALIZING UI');
         elements.slot.textContent = CONFIG.LOADING_MESSAGES[4];
         clearInterval(bgIntervals.prg);
         elements.bar.style.width = '100%';
@@ -147,6 +179,7 @@ export const performRandomize = async (urls) => {
             }
         };
 
+        Log.info('Rendering result...', finalData);
         renderResult(finalData);
         setView('result');
         saveHistory(finalData);
@@ -157,13 +190,15 @@ export const performRandomize = async (urls) => {
         clearInterval(bgIntervals.prg);
         setView('form');
         showError(err.message || 'Processing failed');
-        console.error('[FATAL]', err);
+        Log.error('Randomization Flow Interrupted', err);
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Spin the wheel';
         resultBtns.forEach(btn => { btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; });
+        Log.info('Flow End / Cleaned up.');
     }
 };
+
 
 // --- Listeners & Boots ---
 

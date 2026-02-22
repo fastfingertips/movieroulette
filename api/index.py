@@ -7,15 +7,10 @@ api_dir = os.path.dirname(os.path.abspath(__file__))
 if api_dir not in sys.path:
     sys.path.append(api_dir)
 
-try:
-    from utils import extract_info, get_error_msg
-    from scraper import get_list_metadata, get_random_from_instance, get_random_movie_meta, get_movie_details
-    from constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
-except ImportError:
-    # Fallback for different execution contexts
-    from .utils import extract_info, get_error_msg
-    from .scraper import get_list_metadata, get_random_from_instance, get_random_movie_meta, get_movie_details
-    from .constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
+from utils import extract_info, get_error_msg
+from scraper import get_list_metadata, get_random_from_instance, get_random_movie_meta, get_movie_details
+from constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
+
 
 
 # Initialize Flask with the project root as the static folder

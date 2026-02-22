@@ -160,6 +160,24 @@
         @keyframes reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .result-title { font-family: var(--font-serif); font-size: 32px; color: #fff; line-height: 1.2; margin-bottom: 6px; }
         .result-meta { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 24px; }
+        
+        .result-stats {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 32px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .result-stats span { color: var(--color-text-secondary); }
+
 
         /* History */
         .history-grid { 

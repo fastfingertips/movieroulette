@@ -55,6 +55,13 @@
                     <div id="result-panel" class="is-hidden result-view">
                         <h2 class="result-title" id="result-movie"></h2>
                         <p class="result-meta" id="result-meta"></p>
+                        
+                        <div class="result-stats" id="result-stats">
+                            <i data-lucide="info" style="width: 12px; height: 12px; opacity: 0.5;"></i>
+                            Chosen from <span id="stat-pool">0</span> movies 
+                            (<span id="stat-prob">0</span>% chance)
+                        </div>
+
                         <div style="display: grid; gap: 8px;">
                             <a class="action-btn" id="result-link" target="_blank" rel="noopener">Open Letterboxd</a>
                             <div style="display: flex; gap: 8px;">

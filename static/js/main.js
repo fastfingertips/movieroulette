@@ -183,6 +183,10 @@ export const performRandomize = async (urls) => {
                 elements.resMovie.textContent = data.movie.name;
                 elements.resMeta.innerHTML = `<strong>${data.movie.year || ''}</strong> from ${data.list.title}`;
                 elements.resLink.href = data.movie.url;
+                
+                // Show statistics
+                elements.statPool.textContent = data.stats.total_pool.toLocaleString();
+                elements.statProb.textContent = data.stats.probability;
 
                 setView('result');
                 

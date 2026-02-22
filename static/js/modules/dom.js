@@ -11,6 +11,8 @@ export const elements = {
     resMovie: $('result-movie'),
     resMeta: $('result-meta'),
     resLink: $('result-link'),
+    statPool: $('stat-pool'),
+    statProb: $('stat-prob'),
     error: $('error-msg'),
     errorText: $('error-text')
 };

@@ -5,10 +5,10 @@ import random, os
 # fall back to direct imports for local script execution
 try:
     from .utils import extract_info, get_error_msg
-    from .scraper import get_random_movie_from_list
+    from .scraper import get_list_metadata, get_random_from_instance
 except ImportError:
     from utils import extract_info, get_error_msg
-    from scraper import get_random_movie_from_list
+    from scraper import get_list_metadata, get_random_from_instance
 
 # Absolute path to the folder containing index.html (the project root)
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -24,26 +24,51 @@ def index():
 def randomize():
     try:
         urls = [u.strip() for u in (request.json or {}).get('urls', []) if u.strip()]
-        if not urls: 
-            return jsonify({"error": "No URLs provided"}), 400
+        if not urls: return jsonify({"error": "No URLs provided"}), 400
             
-        url = random.choice(urls)
-        user, slug = extract_info(url)
-        if not user: 
-            return jsonify({"error": f"Invalid URL: {url}"}), 400
-            
-        # Get random movie using the optimized scraper logic
-        movie, title, count = get_random_movie_from_list(user, slug)
+        # 1. Fetch metadata for all lists
+        list_data = []
+        total_count = 0
+        for url in urls:
+            user, slug = extract_info(url)
+            if user:
+                lb_instance, title, count = get_list_metadata(user, slug)
+                if count > 0:
+                    list_data.append({"instance": lb_instance, "title": title, "count": count, "url": url})
+                    total_count += count
         
-        if not movie:
-            return jsonify({"error": "List is empty or inaccessible"}), 404
+        if not list_data:
+            return jsonify({"error": "No valid movies found in provided lists"}), 404
             
+        # 2. Pick a list weighted by its size (Fair probability: 1/TotalCount for every movie)
+        target_index = random.randint(0, total_count - 1)
+        selected_list = None
+        current_sum = 0
+        for item in list_data:
+            current_sum += item['count']
+            if target_index < current_sum:
+                selected_list = item
+                break
+        
+        # 3. Get random movie from the selected list
+        movie = get_random_from_instance(selected_list['instance'], selected_list['count'])
+        if not movie:
+            return jsonify({"error": "Failed to extract movie"}), 500
+            
+        # 4. Calculate probability (1 / total_count * 100)
+        probability = (1 / total_count) * 100
+        
         return jsonify({
             "movie": {k: movie.get(k) for k in ['name', 'url', 'year']},
-            "list": {"title": title, "count": count, "url": url}
+            "list": {"title": selected_list['title'], "url": selected_list['url']},
+            "stats": {
+                "total_pool": total_count,
+                "probability": f"{probability:.4f}" if probability < 0.01 else f"{probability:.2f}"
+            }
         })
     except Exception as e:
         return jsonify({"error": get_error_msg(e)}), 500
+
 
 if __name__ == "__main__":
     print(f"🚀 Starting server from: {ROOT_DIR}")

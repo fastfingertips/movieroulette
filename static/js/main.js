@@ -9,8 +9,8 @@ let urlCount = 1;
 const loadingMessages = [
     "CONNECTING TO LETTERBOXD",
     "FETCHING LIST METADATA",
-    "CALCULATING WEIGHTED POOL",
-    "SCRAPING RANDOM PAGE",
+    "SELECTING RANDOM MOVIE FROM LIST",
+    "FETCHING FILM DETAILS (POSTER & RATING)",
     "FINALIZING CANDIDATE"
 ];
 let bgIntervals = { slot: null, prg: null };

@@ -6,12 +6,9 @@ from letterboxdpy.utils.utils_url import get_page_url
 from letterboxdpy.utils.movies_extractor import extract_movies_from_vertical_list
 from letterboxdpy.constants.project import DOMAIN
 
-try:
-    from .utils import progress_step
-    from .constants import MOVIES_PER_PAGE
-except (ImportError, ValueError):
-    from utils import progress_step
-    from constants import MOVIES_PER_PAGE
+from utils import progress_step
+from constants import MOVIES_PER_PAGE
+
 
 @progress_step("Fetching List Metadata")
 def get_list_metadata(user, slug):

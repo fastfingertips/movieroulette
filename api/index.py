@@ -3,14 +3,10 @@ import random, os
 
 # Try relative imports for Vercel / package context, 
 # fall back to direct imports for local script execution
-try:
-    from .utils import extract_info, get_error_msg
-    from .scraper import get_list_metadata, get_random_from_instance
-    from .constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
-except ImportError:
-    from utils import extract_info, get_error_msg
-    from scraper import get_list_metadata, get_random_from_instance
-    from constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
+from utils import extract_info, get_error_msg
+from scraper import get_list_metadata, get_random_from_instance
+from constants import ROOT_DIR, PORT, DEFAULT_ENGINE, SERVER_TYPE
+
 
 # Initialize Flask with the project root as the static folder
 app = Flask(__name__, static_folder=ROOT_DIR, static_url_path='')
